@@ -4,10 +4,8 @@ var _ERROR_ = "ERROR";
 var _IDENTIFIER_ = "IDENTIFIER";
 var _OPERATOR_ = "OPERATOR";
 
-var input = "This is (42 + 24;";
+var input = "1 + 2 * 5 + 10 - 3 * 5;";
 var head = 0;
-var currenToken;
-var value;
 
 function isEOL(character) {
 	return character == ";";
@@ -76,15 +74,88 @@ function nextToken() {
 	return token;
 }
 
-function main() {
+function nodePlus(left, right) {
+	this.type = "+";
+	this.left = left;
+	this.right = right;
+	this.value = function () {
+		return this.left.value() + this.right.value();
+	};
+}
+
+function nodeMinus(left, right) {
+	this.type = "-";
+	this.left = left;
+	this.right = right;
+	this.value = function () {
+		return this.left.value() - this.right.value();
+	};
+}
+
+function nodeTimes(left, right) {
+	this.type = "*";
+	this.left = left;
+	this.right = right;
+	this.value = function () {
+		return this.left.value() * this.right.value();
+	};
+}
+
+function nodeNumber(number) {
+	this.type = _NUMBER_;
+	this.number = parseInt(number);
+	this.value = function () {
+		return this.number;
+	};
+}
+
+function nodeError(error) {
+	this.type = _ERROR_;
+	this.error = error;
+	this.value = function () {
+		return "(Error: " + error + ")";
+	}
+}
+
+function getAst() {
 	var token = nextToken();
-	while (token.type != _EOF_ && token.type != _ERROR_) {
-		console.log(token.type + " : " + token.value);
-		token = nextToken();
+	switch (token.type) {
+		case _NUMBER_:
+	  	var next = nextToken();
+			switch (next.type) {
+				case _OPERATOR_:
+					switch (next.value) {
+						case "+":
+							return new nodePlus(new nodeNumber(token.value), getAst());
+						case "-":
+			  			return new nodeMinus(new nodeNumber(token.value), getAst());
+						case "*":
+						  var ast = getAst();
+							switch (ast.type) {
+								case "+":
+								case "-":
+								  var astTimes = new nodeTimes(new nodeNumber(token.value), ast.left);
+									ast.left = astTimes;
+									return ast;
+								default:
+							  	return new nodeTimes(new nodeNumber(token.value), ast);
+							}
+						default:
+			  			return new nodeError("Operator " + next.value + " not supported");
+					}
+				case _EOF_:
+				  return new nodeNumber(token.value);
+				default:
+				  return new nodeError("Operator or end of line expected");
+			}
+		default:
+	  	return new nodeError("Number expected");
 	}
-	if (token.type == _ERROR_) {
-		console.log("Unexpected character: " + token.value);
-	}
+}
+
+function main() {
+	var ast = getAst();
+	console.log(ast.value());
 }
 
 main();
