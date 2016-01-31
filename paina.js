@@ -101,6 +101,15 @@ function nodeTimes(left, right) {
 	};
 }
 
+function nodeDivide(left, right) {
+	this.type = "/";
+	this.left = left;
+	this.right = right;
+	this.value = function () {
+		return this.left.value() / this.right.value();
+	}
+}
+
 function nodeNumber(number) {
 	this.type = _NUMBER_;
 	this.number = parseInt(number);
@@ -139,6 +148,15 @@ function getAst() {
 									return ast;
 								default:
 							  	return new nodeTimes(new nodeNumber(token.value), ast);
+							}
+						case "/":
+						  var ast = getAst();
+							switch (ast.type) {
+								case "+":
+								case "-":
+									var astDivide = new nodeDivide(new nodeNumber(token.value), ast.left);
+									ast.left = astDivide;
+									return ast;
 							}
 						default:
 			  			return new nodeError("Operator " + next.value + " not supported");
