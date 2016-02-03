@@ -1,0 +1,39 @@
+<html>
+<head>
+  <title>Paina</title>
+</head>
+<body>
+    <input type="text" id="code"/>
+    <button type="button" onclick="evaluateInput()">Evaluate</button>
+    <p>Output: <span id="output"></span></p>
+    <p>Operators allowed:</p>
+    <ul>
+        <li>+</li>
+        <li>-</li>
+        <li>*</li>
+        <li>/</li>
+    </ul>
+    <p>Data types:</p>
+    <ul>
+        <li>Integer</li>
+    </ul>
+    <p>Associativity:</p>
+    <ul>
+        <li>Left</li>
+    </ul>
+    <p>Misc:</p>
+    <ul>
+        <li>Error reporting not supported (yet)</li>
+    </ul>
+    <script src="js/paina.js"></script>
+    <script>
+        function evaluateInput() {
+            reset();
+            input = document.getElementById('code').value;
+            var output = parser();
+            //console.log(output);
+            document.getElementById('output').innerHTML = output.value();
+        }
+    </script>
+</body>
+</html>
