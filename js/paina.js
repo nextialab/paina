@@ -6,10 +6,13 @@ var _ERROR_ = "ERROR";
 var _IDENTIFIER_ = "IDENTIFIER";
 var _OPERATOR_ = "OPERATOR";
 var _SENTINEL_ = "SENTINEL";
+var _OPAR_ = "OPEN PARENTHESIS";
+var _CPAR_ = "CLOSE PARENTHESIS";
 
 var input = "";
 var head = 0;
 var sentinel = {type: _SENTINEL_, value: "@"};
+var last_token;
 
 var precedence = {
 	"@": 0, // sentinel
@@ -46,25 +49,51 @@ function isOperator() {
 	return !isEOL() && input[head].match(/[\+\-\*\/]/) != null;
 }
 
+function isOpenParenthesis() {
+	return !isEOL() && input[head] == '(';
+}
+
+function isCloseParenthesis() {
+	return !isEOL() && input[head] == ')';
+}
+
+function consume() {
+	head++;
+	last_token = sentinel;
+}
+
 function getNextToken() {
+	if (last_token.type != _SENTINEL_) return last_token;
 	var token = {};
 	while (isSpace()) {
 		head++;
 	}
+	if (isOpenParenthesis()) {
+		token.type = _OPAR_;
+		token.value = input[head];
+		return token;
+	}
+	if (isCloseParenthesis()) {
+		token.type = _CPAR_;
+		token.value = input[head];
+		return token;
+	}
 	if (isAlpha()) {
 		var start = head;
-		while (isAlphaNum()) {
+		do {
 			head++;
-		}
+		} while(isAlphaNum());
+		head--;
 		token.type = _IDENTIFIER_;
 		token.value = input.substring(start, head);
 		return token;
 	}
 	if (isNumeric()) {
 		var start = head;
-		while(isNumeric()) {
+		do {
 			head++;
-		}
+		} while(isNumeric());
+		head--;
 		token.type = _NUMBER_;
 		token.value = input.substring(start, head);
 		return token;
@@ -72,7 +101,6 @@ function getNextToken() {
 	if (isOperator()) {
 		token.type = _OPERATOR_;
 		token.value = input[head];
-		head++;
 		return token;
 	}
 	if (isEOL()) {
@@ -148,10 +176,7 @@ function nodeError(error) {
 	};
 }
 
-function makeNode() {
-	var operator = operators.pop();
-	var right = operands.pop();
-	var left = operands.pop();
+function makeNode(operator, right, left) {
 	switch (operator.value) {
 		case "+":
 			return nodePlus(left, right);
@@ -175,7 +200,10 @@ function topOperands() {
 }
 
 function popOperator() {
-	operands.push(makeNode());
+	var operator = operators.pop();
+	var right = operands.pop();
+	var left = operands.pop();
+	operands.push(makeNode(operator, right, left));
 }
 
 function pushOperator(operator) {
@@ -190,23 +218,41 @@ function operand() {
 	switch (token.type) {
 		case _NUMBER_:
 			operands.push(nodeNumber(token.value));
+			consume();
 			return true;
+		case _OPAR_:
+			consume();
+			operators.push(sentinel);
+			expression();
+			var next = getNextToken();
+			if (next.type == _CPAR_) {
+				consume();
+				operators.pop();
+				return true;
+			} else {
+				return false;
+			}
 		default:
 			return false;
 	}
 }
 
-function parser() {
+function expression() {
 	operand();
 	var token = getNextToken();
 	while (token.type == _OPERATOR_) {
 		pushOperator(token);
+		consume();
 		operand();
 		token = getNextToken();
 	}
 	while (topOperator().type != _SENTINEL_) {
 		popOperator();
 	}
+}
+
+function parser() {
+	expression();
 	return topOperands();
 }
 
