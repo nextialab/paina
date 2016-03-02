@@ -3,9 +3,11 @@
   <title>Paina</title>
 </head>
 <body>
-    <input type="text" id="code"/>
+    <input type="text" size="100" id="code" />
     <button type="button" onclick="evaluateInput()">Evaluate</button>
-    <p>Output: <span id="output"></span></p>
+    <p>Output:</p>
+    <ul id="console">
+    </ul>
     <p>Operators allowed:</p>
     <ul>
         <li>+</li>
@@ -19,6 +21,7 @@
     </ul>
     <p>Associativity:</p>
     <ul>
+        <li>Parenthesis ( and )</li>
         <li>Left</li>
     </ul>
     <p>Misc:</p>
@@ -31,8 +34,10 @@
             reset();
             input = document.getElementById('code').value;
             var output = parser();
-            //console.log(output);
-            document.getElementById('output').innerHTML = output.value();
+            var li = document.createElement('li');
+            li.innerHTML = input + " => " + output.value();
+            document.getElementById('console').appendChild(li);
+            document.getElementById('code').value = "";
         }
     </script>
 </body>

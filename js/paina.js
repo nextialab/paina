@@ -8,6 +8,7 @@ var _OPERATOR_ = "OPERATOR";
 var _SENTINEL_ = "SENTINEL";
 var _OPAR_ = "OPEN PARENTHESIS";
 var _CPAR_ = "CLOSE PARENTHESIS";
+var _UNARYMINUS_ = "UNARY_-"
 
 var input = "";
 var head = 0;
@@ -63,7 +64,7 @@ function consume() {
 }
 
 function getNextToken() {
-	if (last_token.type != _SENTINEL_) return last_token;
+	if (last_token != null && last_token.type != _SENTINEL_) return last_token;
 	var token = {};
 	while (isSpace()) {
 		head++;
@@ -83,9 +84,9 @@ function getNextToken() {
 		do {
 			head++;
 		} while(isAlphaNum());
-		head--;
 		token.type = _IDENTIFIER_;
 		token.value = input.substring(start, head);
+		head--;
 		return token;
 	}
 	if (isNumeric()) {
@@ -93,9 +94,9 @@ function getNextToken() {
 		do {
 			head++;
 		} while(isNumeric());
-		head--;
 		token.type = _NUMBER_;
 		token.value = input.substring(start, head);
+		head--;
 		return token;
 	}
 	if (isOperator()) {
@@ -166,6 +167,16 @@ function nodeNumber(number) {
 	};
 }
 
+function nodeUnaryMinus(expression) {
+	return {
+		type = _UNARYMINUS_;
+		expression = expression;
+		value: function () {
+			return -1 * this.expression.value();
+		}
+	}
+}
+
 function nodeError(error) {
 	return {
 		type: _ERROR_,
@@ -229,9 +240,13 @@ function operand() {
 				consume();
 				operators.pop();
 				return true;
-			} else {
+			}
+			return false;
+		case _OPERATOR_:
+			if (token.value == '-') {
 				return false;
 			}
+			return false;
 		default:
 			return false;
 	}
