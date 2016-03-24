@@ -1,5 +1,238 @@
 // Based on: http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm
 
+var Token = (function () {
+	var EOF = 0;
+	var NUMBER = 1;
+	var OPERATOR = 2;
+	var IDENTIFIER = 3;
+	var WHILE = 4;
+	var IF = 5;
+	var OP = 6;
+	var CP = 7;
+	var SENTINEL = 8;
+	var ERROR = 9;
+	return {
+		EOF: EOF,
+		NUMBER: NUMBER,
+		OPERATOR: OPERATOR,
+		IDENTIFIER: IDENTIFIER,
+		WHILE: WHILE,
+		IF: IF,
+		SENTINEL: SENTINEL,
+		tokenError: function (error) {
+			return {
+				value: error,
+				type: ERROR;
+			}
+		}
+		tokenEOF: function () {
+			return {
+				type: EOF
+			};
+		},
+		tokenNumber: function (number) {
+			return {
+				value: number,
+				type: NUMBER
+			};
+		},
+		tokenOperator: function (operator) {
+			return {
+				value: operator,
+				type: OPERATOR
+			};
+		},
+		tokenSentinel: function () {
+			return {
+				type: SENTINEL;
+			};
+		},
+		tokenOpenParenthesis: function () {
+			return {
+				type: OP;
+			}
+		},
+		tokenCloseParenthesis: function () {
+			return {
+				type: CP;
+			}
+		},
+		tokenIdentifier: function (identifier) {
+			return {
+				value: identifier,
+				type: IDENTIFIER
+			};
+		}
+	};
+})();
+
+var Node = (function () {
+	var NUMBER = 0;
+	var PLUS = 1;
+	var MINUS = 2;
+	var TIMES = 3;
+	var DIVIDES = 4;
+	var ASSIGNMENT = 5;
+	var EQUAL = 6;
+	var LT = 7;
+	var GT = 8;
+	var LOE = 9;
+	var GOE = 10;
+	var OR = 11;
+	var AND = 12;
+	var NOT = 13;
+	var EXP = 14;
+	return {
+		NUMBER: NUMBER,
+		PLUS: PLUS,
+		MINUS: MINUS,
+		TIMES: TIMES,
+		DIVIDES: DIVIDES,
+		ASSIGNMENT: ASSIGNMENT,
+		EQUAL: EQUAL,
+		LT: LT,
+		GT: GT,
+		LOE: LOE,
+		GOE: GOE,
+		OR: OR,
+		AND: AND,
+		NOT: NOT,
+		EXP: EXP,
+		nodeNumber: function (number) {
+			return {
+				number: number,
+				type: NUMBER,
+				unary: false,
+				value: function () {
+					return parseInt(this.number);
+				}
+			}
+		},
+		nodePlus: function (left, right) {
+			return {
+				left: left,
+				right: right,
+				type: PLUS,
+				unary: false,
+				value: function () {
+					return this.left.value() + this.right.value();
+				}
+			}
+		},
+		nodeUnaryPlus: function (leaf) {
+			return {
+				leaf: leaf,
+				type: PLUS,
+				unary: true,
+				value: function () {
+					return 1 * this.leaf.value();
+				}
+			}
+		},
+		nodeMinus: function (left, right) {
+			return {
+				left: left,
+				right: right,
+				type: PLUS,
+				unary: false,
+				value: function () {
+					return this.left.value() - this.right.value();
+				}
+			}
+		},
+		nodeUnaryMinus: function (leaf) {
+			return {
+				leaf: leaf,
+				type: PLUS,
+				unary: true,
+				value: function () {
+					return -1 * this.leaf.value();
+				}
+			}
+		}
+	};
+})();
+
+var Tokenizer = (function () {
+	var stream = '';
+	var head = 0;
+	var last = null;
+	function isEOL() {
+		return head == input.length;
+	}
+	function isSpace() {
+		return !isEOL() && stream[head] == ' ';
+	}
+	function isAlpha() {
+		return !isEOL() && stream[head].match(/[a-zA-Z]/) != null;
+	}
+	function isAlphaNum() {
+		return !isEOL() && stream[head].match(/[a-zA-Z0-9]/) != null;
+	}
+	function isNumeric() {
+		return !isEOL() && stream[head].match(/[0-9]/) != null;
+	}
+	function isOperator() {
+		return !isEOL() && stream[head].match(/[\+\-\*\/]/) != null;
+	}
+	function isOpenParenthesis() {
+		return !isEOL() && stream[head] == '(';
+	}
+	function isCloseParenthesis() {
+		return !isEOL() && stream[head] == ')';
+	}
+	return {
+		reset: function (string) {
+			head = 0;
+			stream = string;
+			last = null;
+		},
+		next: function () {
+			if (last != null && last.type != SENTINEL) return last;
+			while (isSpace()) {
+				head++;
+			}
+			if (isOpenParenthesis()) {
+				return Token.tokenOpenParenthesis();
+			}
+			if (isCloseParenthesis()) {
+				return Token.tokenCloseParenthesis();
+			}
+			if (isAlpha()) {
+				var start = head;
+				do {
+					head++;
+				} while(isAlphaNum());
+				var identifier = input.substring(start, head);
+				head--;
+				return Token.tokenIdentifier(identifier);
+			}
+			if (isNumeric()) {
+				var start = head;
+				do {
+					head++;
+				} while(isNumeric());
+				var number = input.substring(start, head);
+				head--;
+				return Token.tokenNumber(number);
+			}
+			if (isOperator()) {
+				var operator = input[head];
+				return Token.tokenOperator(operator);
+			}
+			if (isEOL()) {
+				return Token.tokenEOF();
+			}
+			var remainder = input.substring(head);
+			return Token.tokenError(remainder);
+		},
+		consume: function () {
+			head++;
+			last = Token.tokenSentinel();
+		}
+	}
+})();
+
 var _EOF_ = "EOF";
 var _NUMBER_ = "NUMBER";
 var _ERROR_ = "ERROR";
