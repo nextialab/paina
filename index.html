@@ -10,8 +10,10 @@
     </ul>
     <p>Operators allowed:</p>
     <ul>
-        <li>+</li>
-        <li>-</li>
+        <li>Binary +</li>
+        <li>Unary +</li>
+        <li>Binary -</li>
+        <li>Unary -</li>
         <li>*</li>
         <li>/</li>
     </ul>
@@ -31,9 +33,9 @@
     <script src="js/paina.js"></script>
     <script>
         function evaluateInput() {
-            reset();
-            input = document.getElementById('code').value;
-            var output = parser();
+            Parser.reset();
+            var input = document.getElementById('code').value;
+            var output = Parser.parse(input);
             var li = document.createElement('li');
             li.innerHTML = input + " => " + output.value();
             document.getElementById('console').appendChild(li);

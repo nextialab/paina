@@ -1,4 +1,5 @@
 // Based on: http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm
+'use strict';
 
 var Token = (function () {
 	var EOF = 0;
@@ -19,12 +20,14 @@ var Token = (function () {
 		WHILE: WHILE,
 		IF: IF,
 		SENTINEL: SENTINEL,
+		OP: OP,
+		CP: CP,
 		tokenError: function (error) {
 			return {
 				value: error,
-				type: ERROR;
-			}
-		}
+				type: ERROR
+			};
+		},
 		tokenEOF: function () {
 			return {
 				type: EOF
@@ -39,23 +42,27 @@ var Token = (function () {
 		tokenOperator: function (operator) {
 			return {
 				value: operator,
-				type: OPERATOR
+				type: OPERATOR,
+				unary: false
 			};
 		},
 		tokenSentinel: function () {
 			return {
-				type: SENTINEL;
+				value: '@',
+				type: SENTINEL
 			};
 		},
 		tokenOpenParenthesis: function () {
 			return {
-				type: OP;
-			}
+				value: '(',
+				type: OP
+			};
 		},
 		tokenCloseParenthesis: function () {
 			return {
-				type: CP;
-			}
+				value: ')',
+				type: CP
+			};
 		},
 		tokenIdentifier: function (identifier) {
 			return {
@@ -106,7 +113,7 @@ var Node = (function () {
 				value: function () {
 					return parseInt(this.number);
 				}
-			}
+			};
 		},
 		nodePlus: function (left, right) {
 			return {
@@ -117,7 +124,7 @@ var Node = (function () {
 				value: function () {
 					return this.left.value() + this.right.value();
 				}
-			}
+			};
 		},
 		nodeUnaryPlus: function (leaf) {
 			return {
@@ -127,27 +134,69 @@ var Node = (function () {
 				value: function () {
 					return 1 * this.leaf.value();
 				}
-			}
+			};
 		},
 		nodeMinus: function (left, right) {
 			return {
 				left: left,
 				right: right,
-				type: PLUS,
+				type: MINUS,
 				unary: false,
 				value: function () {
 					return this.left.value() - this.right.value();
 				}
-			}
+			};
 		},
 		nodeUnaryMinus: function (leaf) {
 			return {
 				leaf: leaf,
-				type: PLUS,
+				type: MINUS,
 				unary: true,
 				value: function () {
 					return -1 * this.leaf.value();
 				}
+			};
+		},
+		nodeTimes: function (left, right) {
+			return {
+				left: left,
+				right: right,
+				type: TIMES,
+				unary: false,
+				value: function () {
+					return this.left.value() * this.right.value();
+				}
+			};
+		},
+		nodeDivides: function (left, right) {
+			return {
+				left: left,
+				right: right,
+				type: DIVIDES,
+				unary: false,
+				value: function () {
+					return this.left.value() / this.right.value();
+				}
+			};
+		},
+		nodeBinaryOperator: function (operator, left, right) {
+			switch (operator) {
+				case '+':
+					return this.nodePlus(left, right);
+				case '-':
+					return this.nodeMinus(left, right);
+				case '*':
+					return this.nodeTimes(left, right);
+				case '/':
+					return this.nodeDivides(left, right);
+			}
+		},
+		nodeUnaryOperator: function (operator, leaf) {
+			switch (operator) {
+				case '+':
+					return this.nodeUnaryPlus(leaf);
+				case '-':
+					return this.nodeUnaryMinus(leaf);
 			}
 		}
 	};
@@ -158,7 +207,7 @@ var Tokenizer = (function () {
 	var head = 0;
 	var last = null;
 	function isEOL() {
-		return head == input.length;
+		return head == stream.length;
 	}
 	function isSpace() {
 		return !isEOL() && stream[head] == ' ';
@@ -188,7 +237,7 @@ var Tokenizer = (function () {
 			last = null;
 		},
 		next: function () {
-			if (last != null && last.type != SENTINEL) return last;
+			if (last != null && last.type != Token.SENTINEL) return last;
 			while (isSpace()) {
 				head++;
 			}
@@ -203,7 +252,7 @@ var Tokenizer = (function () {
 				do {
 					head++;
 				} while(isAlphaNum());
-				var identifier = input.substring(start, head);
+				var identifier = stream.substring(start, head);
 				head--;
 				return Token.tokenIdentifier(identifier);
 			}
@@ -212,301 +261,107 @@ var Tokenizer = (function () {
 				do {
 					head++;
 				} while(isNumeric());
-				var number = input.substring(start, head);
+				var number = stream.substring(start, head);
 				head--;
 				return Token.tokenNumber(number);
 			}
 			if (isOperator()) {
-				var operator = input[head];
+				var operator = stream[head];
 				return Token.tokenOperator(operator);
 			}
 			if (isEOL()) {
 				return Token.tokenEOF();
 			}
-			var remainder = input.substring(head);
+			var remainder = stream.substring(head);
 			return Token.tokenError(remainder);
 		},
 		consume: function () {
 			head++;
 			last = Token.tokenSentinel();
 		}
-	}
+	};
 })();
 
-var _EOF_ = "EOF";
-var _NUMBER_ = "NUMBER";
-var _ERROR_ = "ERROR";
-var _IDENTIFIER_ = "IDENTIFIER";
-var _OPERATOR_ = "OPERATOR";
-var _SENTINEL_ = "SENTINEL";
-var _OPAR_ = "OPEN PARENTHESIS";
-var _CPAR_ = "CLOSE PARENTHESIS";
-var _UNARYMINUS_ = "UNARY_-"
-
-var input = "";
-var head = 0;
-var sentinel = {type: _SENTINEL_, value: "@"};
-var last_token;
-
-var precedence = {
-	"@": 0, // sentinel
-	"+": 1,
-	"-": 1,
-	"*": 2,
-	"/": 2
-};
-
-var operands = [];
-var operators = [sentinel];
-
-function isEOL() {
-	return head == input.length;
-}
-
-function isSpace() {
-	return !isEOL() && input[head] == ' ';
-}
-
-function isAlpha() {
-	return !isEOL() && input[head].match(/[a-zA-Z]/) != null;
-}
-
-function isAlphaNum() {
-	return !isEOL() && input[head].match(/[a-zA-Z0-9]/) != null;
-}
-
-function isNumeric() {
-	return !isEOL() && input[head].match(/[0-9]/) != null;
-}
-
-function isOperator() {
-	return !isEOL() && input[head].match(/[\+\-\*\/]/) != null;
-}
-
-function isOpenParenthesis() {
-	return !isEOL() && input[head] == '(';
-}
-
-function isCloseParenthesis() {
-	return !isEOL() && input[head] == ')';
-}
-
-function consume() {
-	head++;
-	last_token = sentinel;
-}
-
-function getNextToken() {
-	if (last_token != null && last_token.type != _SENTINEL_) return last_token;
-	var token = {};
-	while (isSpace()) {
-		head++;
+var Parser = (function () {
+	var precedence = {'@': 0, '+': 1, '-': 1, '*': 2, '/': 2};
+	var operands = [];
+	var operators = [];
+	function getTopOperator() {
+		return operators.slice(-1)[0];
 	}
-	if (isOpenParenthesis()) {
-		token.type = _OPAR_;
-		token.value = input[head];
-		return token;
+	function getTopOperands() {
+		return operands.slice(-1)[0];
 	}
-	if (isCloseParenthesis()) {
-		token.type = _CPAR_;
-		token.value = input[head];
-		return token;
-	}
-	if (isAlpha()) {
-		var start = head;
-		do {
-			head++;
-		} while(isAlphaNum());
-		token.type = _IDENTIFIER_;
-		token.value = input.substring(start, head);
-		head--;
-		return token;
-	}
-	if (isNumeric()) {
-		var start = head;
-		do {
-			head++;
-		} while(isNumeric());
-		token.type = _NUMBER_;
-		token.value = input.substring(start, head);
-		head--;
-		return token;
-	}
-	if (isOperator()) {
-		token.type = _OPERATOR_;
-		token.value = input[head];
-		return token;
-	}
-	if (isEOL()) {
-		token.type = _EOF_;
-		return token;
-	}
-	token.type = _ERROR_;
-	token.value = input.substring(head);
-	return token;
-}
-
-function nodePlus(left, right) {
-	return {
-		type: "+",
-		left: left,
-		right: right,
-		value: function () {
-			return this.left.value() + this.right.value();
-		}
-	};
-}
-
-function nodeMinus(left, right) {
-	return {
-		type: "-",
-		left: left,
-		right: right,
-		value: function () {
-			return this.left.value() - this.right.value();
-		}
-	};
-}
-
-function nodeTimes(left, right) {
-	return {
-		type: "*",
-		left: left,
-		right: right,
-		value: function () {
-			return this.left.value() * this.right.value();
-		}
-	};
-}
-
-function nodeDivide(left, right) {
-	return {
-		type: "/",
-		left: left,
-		right: right,
-		value: function () {
-			return this.left.value() / this.right.value();
-		}
-	};
-}
-
-function nodeNumber(number) {
-	return {
-		type: _NUMBER_,
-		number: parseInt(number),
-		value: function () {
-			return this.number;
-		}
-	};
-}
-
-function nodeUnaryMinus(expression) {
-	return {
-		type = _UNARYMINUS_;
-		expression = expression;
-		value: function () {
-			return -1 * this.expression.value();
+	function popOperator() {
+		var operator = operators.pop();
+		if (operator.unary) {
+			var leaf = operands.pop();
+			operands.push(Node.nodeUnaryOperator(operator.value, leaf));
+		} else {
+			var right = operands.pop();
+			var left = operands.pop();
+			operands.push(Node.nodeBinaryOperator(operator.value, left, right));
 		}
 	}
-}
-
-function nodeError(error) {
-	return {
-		type: _ERROR_,
-		error: error,
-		value: function () {
-			return "(Error: " + error + ")";
+	function pushOperator(operator) {
+		while (precedence[getTopOperator().value] >= precedence[operator.value]) {
+			popOperator();
 		}
-	};
-}
-
-function makeNode(operator, right, left) {
-	switch (operator.value) {
-		case "+":
-			return nodePlus(left, right);
-		case "-":
-			return nodeMinus(left, right);
-		case "*":
-			return nodeTimes(left, right);
-		case "/":
-			return nodeDivide(left, right);
-		default:
-			return nodeError("Invalid operator");
+		operators.push(operator);
 	}
-}
-
-function topOperator() {
-	return operators.slice(-1)[0];
-}
-
-function topOperands() {
-	return operands.slice(-1)[0];
-}
-
-function popOperator() {
-	var operator = operators.pop();
-	var right = operands.pop();
-	var left = operands.pop();
-	operands.push(makeNode(operator, right, left));
-}
-
-function pushOperator(operator) {
-	while (precedence[topOperator().value] >= precedence[operator.value]) {
-		popOperator();
-	}
-	operators.push(operator);
-}
-
-function operand() {
-	var token = getNextToken();
-	switch (token.type) {
-		case _NUMBER_:
-			operands.push(nodeNumber(token.value));
-			consume();
-			return true;
-		case _OPAR_:
-			consume();
-			operators.push(sentinel);
-			expression();
-			var next = getNextToken();
-			if (next.type == _CPAR_) {
-				consume();
-				operators.pop();
+	function lookForOperand() {
+		var token = Tokenizer.next();
+		switch (token.type) {
+			case Token.NUMBER:
+				operands.push(Node.nodeNumber(token.value));
+				Tokenizer.consume();
 				return true;
-			}
-			return false;
-		case _OPERATOR_:
-			if (token.value == '-') {
+			case Token.OP:
+				Tokenizer.consume();
+				operators.push(Token.tokenSentinel());
+				lookForExpression();
+				var next = Tokenizer.next();
+				if (next.type === Token.CP) {
+					Tokenizer.consume();
+					operators.pop();
+					return true;
+				}
 				return false;
-			}
-			return false;
-		default:
-			return false;
+			case Token.OPERATOR:
+				if (token.value === '+' || token.value === '-') {
+					token.unary = true;
+					pushOperator(token);
+					Tokenizer.consume();
+					lookForOperand();
+					return true;
+				}
+				return false;
+			default:
+				return false;
+		}
 	}
-}
-
-function expression() {
-	operand();
-	var token = getNextToken();
-	while (token.type == _OPERATOR_) {
-		pushOperator(token);
-		consume();
-		operand();
-		token = getNextToken();
+	function lookForExpression() {
+		lookForOperand();
+		var token = Tokenizer.next();
+		while (token.type === Token.OPERATOR) {
+			pushOperator(token);
+			Tokenizer.consume();
+			lookForOperand();
+			token = Tokenizer.next();
+		}
+		while (getTopOperator().type !== Token.SENTINEL) {
+			popOperator();
+		}
 	}
-	while (topOperator().type != _SENTINEL_) {
-		popOperator();
-	}
-}
-
-function parser() {
-	expression();
-	return topOperands();
-}
-
-function reset() {
-	input = "";
-	head = 0;
-	operands = [];
-	operators = [sentinel];
-}
+	return {
+		reset: function () {
+			operators = [];
+			operators.push(Token.tokenSentinel());
+		},
+		parse: function (input) {
+			Tokenizer.reset(input);
+			lookForExpression();
+			return getTopOperands();
+		}
+	};
+})();
