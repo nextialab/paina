@@ -31,16 +31,28 @@
         <li>Error reporting not supported (yet)</li>
     </ul>
     <a href="https://github.com/nextialab/paina">Code</a>
+    <script src="js/Node.js"></script>
+    <script src="js/Parser.js"></script>
+    <script src="js/Token.js"></script>
+    <script src="js/Tokenizer.js"></script>
+    <script src="js/VM.js"></script>
     <script src="js/paina.js"></script>
     <script>
         function evaluateInput() {
-            Parser.reset();
+            /*Paina.parser.reset();
             var input = document.getElementById('code').value;
-            var output = Parser.parse(input);
+            var output = Paina.parser.parse(input);
             var li = document.createElement('li');
             li.innerHTML = input + " => " + output.value();
             document.getElementById('console').appendChild(li);
-            document.getElementById('code').value = "";
+            document.getElementById('code').value = "";*/
+            var _node = Node();
+            var _vm = VM();
+            var left = _node.nodeIdentifier('test');
+            var right = _node.nodeIdentifier('test');
+            var sum = _node.nodePlus(left, right);
+            var result = _vm.evaluate(sum);
+            console.log(result);
         }
     </script>
 </body>
